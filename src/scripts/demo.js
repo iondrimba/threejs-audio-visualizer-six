@@ -4,7 +4,7 @@ import { TweenMax, Power2 } from 'gsap';
 
 class App {
   constructor() {
-    this.songFile = 'high-beams.mp3';
+    this.songFile = 'saved_by_the_bell.mp3';
     this.percent = 0;
     this.playing = false;
     this.volume = 1;
@@ -43,84 +43,81 @@ class App {
     this.createScene();
     this.createCamera();
     this.addAmbientLight();
-    this.addSpotLight();
+    this.addSpotLight(new THREE.SpotLight(this.objectsColor), 0, 30, 0);
     this.addCameraControls();
     this.addFloor();
     this.animate();
     this.playSound(file);
     this.addEventListener();
-    //this.scene.add(this.createObj(this.objectsColor));
 
+    this.groupTiles = new THREE.Object3D();
+    this.scene.add(this.groupTiles);
+    var gutter = 2;
 
-    //    this.scene.add(this.createSphere(this.objectsColor));
-    const geo = new THREE.IcosahedronGeometry(5, 2);
+    var positions = [];
+    var index = 0;
+    this.rowTiles = [];
+    this.tiles = [];
 
-    const mat = new THREE.MeshStandardMaterial({
-      color: this.objectsColor,
-      emissive: 0x0,
-      flatShading: true
-    });
-    mat.transparent = true;
-    mat.opacity = 0;
-    this.mesh = new THREE.Mesh(geo, mat);
-    this.mesh.position.set(0,2,0);
-    this.scene.add(this.mesh);
-    this.helper = new THREE.FaceNormalsHelper(this.mesh, 2, 0x00ff00, 1);
-    //this.scene.add( this.helper );
+    let prevPos = 0;
 
-    let startAngle = 0;
-    let radius = 1;
-    let previous = 0;
-    let total = 30;
-    const l = 360 / total;
-    var prev = [];
+    const hasPrev = this.rowTiles.length && this.rowTiles[this.rowTiles.length - 1][0].position;
 
-    // for (var i = 0; i < 4; i++) {
-    //   startAngle = 1 * i;
-    //   const sphere = this.createSphere(this.objectsColor);
-    //   let x = (1 * startAngle) * Math.cos(startAngle);
-    //   let y = (1 * startAngle) * Math.sin(startAngle);
-
-    //   if (prev.length) {
-    //     x = Math.sin((prev[i - 1].x + this.radians(360 / i)));
-    //     y = Math.cos((prev[i - 1].y + this.radians(360 / i)));
-    //     sphere.position.set(x, 0, y);
-    //   } else {
-    //     sphere.position.set(x, 0, y);
-    //   }
-
-    //   prev.push(sphere.position);
-
-    //   this.scene.add(sphere);
-    // }
-
-    for (let index = 0; index < this.mesh.geometry.faces.length; index++) {
-      const sphere = this.createSphere(this.objectsColor);
-      const v = this.mesh.geometry.faces[index].normal;
-      const diff = 5;
-      sphere.position.set(v.x * diff, v.y * diff, v.z * diff);
-      sphere.orig = {
-        x: sphere.position.x,
-        y: sphere.position.y,
-        z: sphere.position.z
-      };
-
-      this.rowTiles.push(sphere);
-      this.mesh.add(sphere);
+    if (this.rowTiles.length) {
+      prevPos = this.rowTiles[this.rowTiles.length - 1][0].position.x + gutter;
     }
+    const cols = 10;
+    const rows = 10;
+    for (let col = 0; col < cols; col++) {
+      positions[col] = [];
+      this.rowTiles.push([]);
+
+      for (let row = 0; row < rows; row++) {
+        const pos = {
+          z: row,
+          y: 0,
+          x: hasPrev ? prevPos : col
+        }
+
+        positions[col][row] = pos;
+        const plane = this.createSphere(this.objectsColor);
+
+        plane.scale.set(1, 0.001, 1);
+
+        if (col > 0) {
+          pos.x = (positions[col - 1][row].x * 1) + gutter;
+        }
+
+        if (row > 0) {
+          pos.z = (positions[col][row - 1].z * 1) + gutter;
+        }
+
+        plane.position.set(pos.x, pos.y, pos.z);
+
+        this.groupTiles.add(plane);
+
+        this.tiles.push(plane);
+
+        this.rowTiles[this.rowTiles.length - 1].push(plane);
+
+        index++;
+      }
+
+      index++;
+    }
+
+    this.groupTiles.position.set(-(cols-1), 0, -(rows-1));
 
     this.addGrid();
   }
 
   addGrid() {
     const size = 25;
-    const divisions = 25;
-
+    const divisions = size;
     const gridHelper = new THREE.GridHelper(size, divisions);
     gridHelper.position.set(0, 0, 0);
     gridHelper.material.opacity = 0;
     gridHelper.material.transparent = true;
-    //console.log(gridHelper.geometry);
     this.scene.add(gridHelper);
   }
 
@@ -136,21 +133,15 @@ class App {
   drawWave() {
     if (this.playing) {
       this.analyser.getByteFrequencyData(this.frequencyData);
-      let index = 0;
-      const diff = 5;
-      for (var i = 0; i < this.rowTiles.length; i++) {
-        var pos = this.rowTiles[i].orig;
+      for (var i = 0; i < this.frequencyData.length; i++) {
         const freq = this.frequencyData[i];
-        let y = this.map(freq, 0, 255, pos.y/diff, pos.y * diff);
-        let x = this.map(freq, 0, 255, pos.x/diff, pos.x * diff);
-        let z = this.map(freq, 0, 255, pos.z/diff, pos.z * diff);
+        let scale = this.map(freq, 0, 255, 0.001, 1);
 
-        TweenMax.to(this.rowTiles[i].position, .2, {
-          x: x,
-          y: y,
-          z: z
-        });
-        index++;
+        if (this.tiles[i]) {
+          TweenMax.to(this.tiles[i].scale, .3, {
+            y: scale
+          });
+        }
       }
     }
   }
@@ -189,9 +180,6 @@ class App {
 
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    this.groupTiles.position.set(10, 0, -5);
-    this.scene.add(this.groupTiles);
 
     document.body.appendChild(this.renderer.domElement);
   }
@@ -234,36 +222,9 @@ class App {
     this.controls = new OrbitControls(this.camera);
   }
 
-  createObj(color) {
-    const radius = 1;
-    const detail = 0;
-    const geometry = new THREE.OctahedronBufferGeometry(radius, detail);
-    const material = new THREE.MeshStandardMaterial({
-      color: color,
-      emissive: 0x0,
-      specular: 0x0,
-      shininess: 1,
-      flatShading: false
-    });
-    const obj = new THREE.Mesh(geometry, material);
-    obj.castShadow = true;
-    obj.receiveShadow = true;
-    obj.position.set(0, 2, 0);
-    //obj.position.z = -2.5;
-    //obj.size = 1;
-    // obj.material.opacity = 0;
-    // obj.material.transparent = true;
-
-    const pivot = new THREE.Object3D();
-    pivot.add(obj);
-    //pivot.size = 1;
-    return pivot;
-  }
 
   createSphere(color) {
-    const radius = .3;
-    const detail = 0;
-    const geometry = new THREE.SphereGeometry(radius, 16, 16);
+    const geometry = new THREE.CylinderGeometry(.4, .4, 10, 59);
     const material = new THREE.MeshStandardMaterial({
       color: color,
       emissive: 0x586300,
@@ -272,17 +233,12 @@ class App {
     });
     const obj = new THREE.Mesh(geometry, material);
     obj.castShadow = true;
-    obj.lookAt(this.scene.position)
     obj.receiveShadow = true;
-    obj.position.set(0, 0, 0);
-    //obj.position.z = -2.5;
-    //obj.size = 1;
-    // obj.material.opacity = 0;
-    // obj.material.transparent = true;
+    obj.position.y = 5;
 
     const pivot = new THREE.Object3D();
     pivot.add(obj);
-    //pivot.size = 1;
+    pivot.size = 2;
     return pivot;
   }
 
@@ -296,7 +252,7 @@ class App {
 
   addFloor() {
     const planeGeometry = new THREE.PlaneGeometry(250, 250);
-    const planeMaterial = new THREE.ShadowMaterial({ opacity: .1 });
+    const planeMaterial = new THREE.ShadowMaterial({ opacity: .05 });
 
     this.floor = new THREE.Mesh(planeGeometry, planeMaterial);
 
@@ -305,38 +261,15 @@ class App {
     this.floor.position.y = 0;
     this.floor.receiveShadow = true;
 
-    //console.log(this.floor.geometry);
-
     this.scene.add(this.floor);
   }
 
-  addSpotLight() {
-    this.spotLight = new THREE.SpotLight(this.objectsColor);
-    this.spotLight.position.set(20, 60, 20);
+  addSpotLight(spotLight, x, y, z) {
+    this.spotLight = spotLight;
+    this.spotLight.position.set(x, y, z);
     this.spotLight.castShadow = true;
-    // this.spotLight.angle = Math.PI / 4;
-    // this.spotLight.penumbra = 0;
-    this.spotLight.decay = .5;
-    // this.spotLight.distance = 100;
-    this.spotLight.shadow.mapSize.width = 1024;
-    this.spotLight.shadow.mapSize.height = 1024;
-    this.spotLight.shadow.camera.near = 10;
-    this.spotLight.shadow.camera.far = 100;
 
     this.scene.add(this.spotLight);
-
-    // var lights = [];
-    // lights[0] = new THREE.PointLight(0xffffff, 1, 0);
-    // lights[1] = new THREE.PointLight(0xffffff, 1, 0);
-    // lights[2] = new THREE.PointLight(0xffffff, 1, 0);
-
-    // lights[0].position.set(10, 200, 110);
-    // lights[1].position.set(-100, -200, 100);
-    // lights[2].position.set(- 100, 200, - 100);
-
-    // this.scene.add(lights[0]);
-    // this.scene.add(lights[1]);
-    // this.scene.add(lights[2]);
   }
 
   addAmbientLight() {
@@ -345,17 +278,7 @@ class App {
   }
 
   animate() {
-
-
     this.controls.update();
-
-    // if (this.rowTiles[this.rowTiles.length - 1]) {
-    //   const x = -this.rowTiles[this.rowTiles.length - 1][0].position.x + 15;
-    //   TweenMax.to(this.groupTiles.position, 1, {
-    //     x: x,
-    //     ease: Power2.easeOut
-    //   });
-    // }
 
     this.renderer.render(this.scene, this.camera);
 
@@ -373,8 +296,8 @@ class App {
     this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     this.analyser = this.audioCtx.createAnalyser();
-    this.analyser.fftSize = 2048;
-    this.analyser.smoothingTimeConstant = 0.8;
+    //this.analyser.fftSize = 2048;
+    this.analyser.smoothingTimeConstant = 0.3;
 
     this.source = this.audioCtx.createMediaElementSource(this.audioElement);
     this.source.connect(this.analyser);
@@ -382,7 +305,8 @@ class App {
 
     this.bufferLength = this.analyser.frequencyBinCount;
 
-    this.frequencyData = new Uint8Array(this.bufferLength);
+    this.waveform = new Uint8Array(this.analyser.fftSize);
+    this.frequencyData = new Uint8Array(this.analyser.fftSize);
     this.audioElement.volume = this.volume;
 
     this.audioElement.addEventListener('playing', () => {

@@ -9053,7 +9053,7 @@ var App = function () {
 
     _classCallCheck(this, App);
 
-    this.songFile = 'high-beams.mp3';
+    this.songFile = 'saved_by_the_bell.mp3';
     this.percent = 0;
     this.playing = false;
     this.volume = 1;
@@ -9098,71 +9098,70 @@ var App = function () {
       this.createScene();
       this.createCamera();
       this.addAmbientLight();
-      this.addSpotLight();
+      this.addSpotLight(new THREE.SpotLight(this.objectsColor), 0, 30, 0);
       this.addCameraControls();
       this.addFloor();
       this.animate();
       this.playSound(file);
       this.addEventListener();
-      //this.scene.add(this.createObj(this.objectsColor));
 
+      this.groupTiles = new THREE.Object3D();
+      this.scene.add(this.groupTiles);
+      var gutter = 2;
 
-      //    this.scene.add(this.createSphere(this.objectsColor));
-      var geo = new THREE.IcosahedronGeometry(5, 2);
+      var positions = [];
+      var index = 0;
+      this.rowTiles = [];
+      this.tiles = [];
 
-      var mat = new THREE.MeshStandardMaterial({
-        color: this.objectsColor,
-        emissive: 0x0,
-        flatShading: true
-      });
-      mat.transparent = true;
-      mat.opacity = 0;
-      this.mesh = new THREE.Mesh(geo, mat);
-      this.mesh.position.set(0, 2, 0);
-      this.scene.add(this.mesh);
-      this.helper = new THREE.FaceNormalsHelper(this.mesh, 2, 0x00ff00, 1);
-      //this.scene.add( this.helper );
+      var prevPos = 0;
 
-      var startAngle = 0;
-      var radius = 1;
-      var previous = 0;
-      var total = 30;
-      var l = 360 / total;
-      var prev = [];
+      var hasPrev = this.rowTiles.length && this.rowTiles[this.rowTiles.length - 1][0].position;
 
-      // for (var i = 0; i < 4; i++) {
-      //   startAngle = 1 * i;
-      //   const sphere = this.createSphere(this.objectsColor);
-      //   let x = (1 * startAngle) * Math.cos(startAngle);
-      //   let y = (1 * startAngle) * Math.sin(startAngle);
-
-      //   if (prev.length) {
-      //     x = Math.sin((prev[i - 1].x + this.radians(360 / i)));
-      //     y = Math.cos((prev[i - 1].y + this.radians(360 / i)));
-      //     sphere.position.set(x, 0, y);
-      //   } else {
-      //     sphere.position.set(x, 0, y);
-      //   }
-
-      //   prev.push(sphere.position);
-
-      //   this.scene.add(sphere);
-      // }
-
-      for (var index = 0; index < this.mesh.geometry.faces.length; index++) {
-        var sphere = this.createSphere(this.objectsColor);
-        var v = this.mesh.geometry.faces[index].normal;
-        var diff = 5;
-        sphere.position.set(v.x * diff, v.y * diff, v.z * diff);
-        sphere.orig = {
-          x: sphere.position.x,
-          y: sphere.position.y,
-          z: sphere.position.z
-        };
-
-        this.rowTiles.push(sphere);
-        this.mesh.add(sphere);
+      if (this.rowTiles.length) {
+        prevPos = this.rowTiles[this.rowTiles.length - 1][0].position.x + gutter;
       }
+      var cols = 10;
+      var rows = 10;
+      for (var col = 0; col < cols; col++) {
+        positions[col] = [];
+        this.rowTiles.push([]);
+
+        for (var row = 0; row < rows; row++) {
+          var pos = {
+            z: row,
+            y: 0,
+            x: hasPrev ? prevPos : col
+          };
+
+          positions[col][row] = pos;
+          var plane = this.createSphere(this.objectsColor);
+
+          plane.scale.set(1, 0.001, 1);
+
+          if (col > 0) {
+            pos.x = positions[col - 1][row].x * 1 + gutter;
+          }
+
+          if (row > 0) {
+            pos.z = positions[col][row - 1].z * 1 + gutter;
+          }
+
+          plane.position.set(pos.x, pos.y, pos.z);
+
+          this.groupTiles.add(plane);
+
+          this.tiles.push(plane);
+
+          this.rowTiles[this.rowTiles.length - 1].push(plane);
+
+          index++;
+        }
+
+        index++;
+      }
+
+      this.groupTiles.position.set(-(cols - 1), 0, -(rows - 1));
 
       this.addGrid();
     }
@@ -9170,13 +9169,11 @@ var App = function () {
     key: 'addGrid',
     value: function addGrid() {
       var size = 25;
-      var divisions = 25;
-
+      var divisions = size;
       var gridHelper = new THREE.GridHelper(size, divisions);
       gridHelper.position.set(0, 0, 0);
       gridHelper.material.opacity = 0;
       gridHelper.material.transparent = true;
-      //console.log(gridHelper.geometry);
       this.scene.add(gridHelper);
     }
   }, {
@@ -9195,21 +9192,15 @@ var App = function () {
     value: function drawWave() {
       if (this.playing) {
         this.analyser.getByteFrequencyData(this.frequencyData);
-        var index = 0;
-        var diff = 5;
-        for (var i = 0; i < this.rowTiles.length; i++) {
-          var pos = this.rowTiles[i].orig;
+        for (var i = 0; i < this.frequencyData.length; i++) {
           var freq = this.frequencyData[i];
-          var y = this.map(freq, 0, 255, pos.y / diff, pos.y * diff);
-          var x = this.map(freq, 0, 255, pos.x / diff, pos.x * diff);
-          var z = this.map(freq, 0, 255, pos.z / diff, pos.z * diff);
+          var scale = this.map(freq, 0, 255, 0.001, 1);
 
-          _gsap.TweenMax.to(this.rowTiles[i].position, .2, {
-            x: x,
-            y: y,
-            z: z
-          });
-          index++;
+          if (this.tiles[i]) {
+            _gsap.TweenMax.to(this.tiles[i].scale, .3, {
+              y: scale
+            });
+          }
         }
       }
     }
@@ -9254,9 +9245,6 @@ var App = function () {
 
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-      this.groupTiles.position.set(10, 0, -5);
-      this.scene.add(this.groupTiles);
 
       document.body.appendChild(this.renderer.domElement);
     }
@@ -9304,38 +9292,9 @@ var App = function () {
       this.controls = new _OrbitControls2.default(this.camera);
     }
   }, {
-    key: 'createObj',
-    value: function createObj(color) {
-      var radius = 1;
-      var detail = 0;
-      var geometry = new THREE.OctahedronBufferGeometry(radius, detail);
-      var material = new THREE.MeshStandardMaterial({
-        color: color,
-        emissive: 0x0,
-        specular: 0x0,
-        shininess: 1,
-        flatShading: false
-      });
-      var obj = new THREE.Mesh(geometry, material);
-      obj.castShadow = true;
-      obj.receiveShadow = true;
-      obj.position.set(0, 2, 0);
-      //obj.position.z = -2.5;
-      //obj.size = 1;
-      // obj.material.opacity = 0;
-      // obj.material.transparent = true;
-
-      var pivot = new THREE.Object3D();
-      pivot.add(obj);
-      //pivot.size = 1;
-      return pivot;
-    }
-  }, {
     key: 'createSphere',
     value: function createSphere(color) {
-      var radius = .3;
-      var detail = 0;
-      var geometry = new THREE.SphereGeometry(radius, 16, 16);
+      var geometry = new THREE.CylinderGeometry(.4, .4, 10, 59);
       var material = new THREE.MeshStandardMaterial({
         color: color,
         emissive: 0x586300,
@@ -9344,17 +9303,12 @@ var App = function () {
       });
       var obj = new THREE.Mesh(geometry, material);
       obj.castShadow = true;
-      obj.lookAt(this.scene.position);
       obj.receiveShadow = true;
-      obj.position.set(0, 0, 0);
-      //obj.position.z = -2.5;
-      //obj.size = 1;
-      // obj.material.opacity = 0;
-      // obj.material.transparent = true;
+      obj.position.y = 5;
 
       var pivot = new THREE.Object3D();
       pivot.add(obj);
-      //pivot.size = 1;
+      pivot.size = 2;
       return pivot;
     }
   }, {
@@ -9370,7 +9324,7 @@ var App = function () {
     key: 'addFloor',
     value: function addFloor() {
       var planeGeometry = new THREE.PlaneGeometry(250, 250);
-      var planeMaterial = new THREE.ShadowMaterial({ opacity: .1 });
+      var planeMaterial = new THREE.ShadowMaterial({ opacity: .05 });
 
       this.floor = new THREE.Mesh(planeGeometry, planeMaterial);
 
@@ -9379,39 +9333,16 @@ var App = function () {
       this.floor.position.y = 0;
       this.floor.receiveShadow = true;
 
-      //console.log(this.floor.geometry);
-
       this.scene.add(this.floor);
     }
   }, {
     key: 'addSpotLight',
-    value: function addSpotLight() {
-      this.spotLight = new THREE.SpotLight(this.objectsColor);
-      this.spotLight.position.set(20, 60, 20);
+    value: function addSpotLight(spotLight, x, y, z) {
+      this.spotLight = spotLight;
+      this.spotLight.position.set(x, y, z);
       this.spotLight.castShadow = true;
-      // this.spotLight.angle = Math.PI / 4;
-      // this.spotLight.penumbra = 0;
-      this.spotLight.decay = .5;
-      // this.spotLight.distance = 100;
-      this.spotLight.shadow.mapSize.width = 1024;
-      this.spotLight.shadow.mapSize.height = 1024;
-      this.spotLight.shadow.camera.near = 10;
-      this.spotLight.shadow.camera.far = 100;
 
       this.scene.add(this.spotLight);
-
-      // var lights = [];
-      // lights[0] = new THREE.PointLight(0xffffff, 1, 0);
-      // lights[1] = new THREE.PointLight(0xffffff, 1, 0);
-      // lights[2] = new THREE.PointLight(0xffffff, 1, 0);
-
-      // lights[0].position.set(10, 200, 110);
-      // lights[1].position.set(-100, -200, 100);
-      // lights[2].position.set(- 100, 200, - 100);
-
-      // this.scene.add(lights[0]);
-      // this.scene.add(lights[1]);
-      // this.scene.add(lights[2]);
     }
   }, {
     key: 'addAmbientLight',
@@ -9422,16 +9353,7 @@ var App = function () {
   }, {
     key: 'animate',
     value: function animate() {
-
       this.controls.update();
-
-      // if (this.rowTiles[this.rowTiles.length - 1]) {
-      //   const x = -this.rowTiles[this.rowTiles.length - 1][0].position.x + 15;
-      //   TweenMax.to(this.groupTiles.position, 1, {
-      //     x: x,
-      //     ease: Power2.easeOut
-      //   });
-      // }
 
       this.renderer.render(this.scene, this.camera);
 
@@ -9453,8 +9375,8 @@ var App = function () {
       this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
       this.analyser = this.audioCtx.createAnalyser();
-      this.analyser.fftSize = 2048;
-      this.analyser.smoothingTimeConstant = 0.8;
+      //this.analyser.fftSize = 2048;
+      this.analyser.smoothingTimeConstant = 0.3;
 
       this.source = this.audioCtx.createMediaElementSource(this.audioElement);
       this.source.connect(this.analyser);
@@ -9462,7 +9384,8 @@ var App = function () {
 
       this.bufferLength = this.analyser.frequencyBinCount;
 
-      this.frequencyData = new Uint8Array(this.bufferLength);
+      this.waveform = new Uint8Array(this.analyser.fftSize);
+      this.frequencyData = new Uint8Array(this.analyser.fftSize);
       this.audioElement.volume = this.volume;
 
       this.audioElement.addEventListener('playing', function () {
