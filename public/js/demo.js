@@ -9041,6 +9041,10 @@ var _OrbitControls = require('threejs-controls/OrbitControls');
 
 var _OrbitControls2 = _interopRequireDefault(_OrbitControls);
 
+var _reflector = require('./reflector');
+
+var _reflector2 = _interopRequireDefault(_reflector);
+
 var _gsap = require('gsap');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -9053,7 +9057,7 @@ var App = function () {
 
     _classCallCheck(this, App);
 
-    this.songFile = 'saved_by_the_bell.mp3';
+    this.songFile = 'ocean_drive.mp3';
     this.percent = 0;
     this.playing = false;
     this.volume = 1;
@@ -9101,41 +9105,88 @@ var App = function () {
       this.addSpotLight(new THREE.SpotLight(this.objectsColor), 0, 30, 0);
       this.addCameraControls();
       this.addFloor();
-      this.animate();
+
       this.playSound(file);
       this.addEventListener();
 
-      this.groupTiles = new THREE.Object3D();
-      this.scene.add(this.groupTiles);
-      var gutter = 2;
+      var urls = ['./img/posx.jpg', './img/negx.jpg', './img/posy.jpg', './img/negy.jpg', './img/posz.jpg', './img/negz.jpg'];
 
-      var positions = [];
-      var index = 0;
-      this.rowTiles = [];
+      var cubemap = new THREE.CubeTextureLoader().load(urls);
+      cubemap.format = THREE.RGBAFormat;
+
+      var shader = THREE.ShaderLib['cube'];
+      shader.uniforms['tCube'].texture = cubemap;
+
+      var material = new THREE.ShaderMaterial({
+        fragmentShader: shader.fragmentShader,
+        vertexShader: shader.vertexShader,
+        uniforms: shader.uniforms,
+        depthWrite: false
+      });
+
+      var skybox = new THREE.Mesh(new THREE.CubeGeometry(100, 100, 100), material);
+      skybox.flipSided = true;
+
+      var geometry1 = new THREE.OctahedronGeometry(3, 0);
+      var sphereMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffff00, emissive: 0x0,
+        roughness: 0.4,
+        metalness: 0.6,
+        envMap: cubemap
+      });
+      sphereMaterial.shadowMap = true;
+      sphereMaterial.castShadow = true;
+      this.reflectingObject = new THREE.Mesh(geometry1, sphereMaterial);
+      this.reflectingObject.position.y = 8;
+      this.reflectingObject.castShadow = true;
+      this.reflectingObject.receiveShadow = true;
+
+      this.scene.add(this.reflectingObject);
+
+      this.groupTiles = new THREE.Object3D();
+      this.groupTiles2 = new THREE.Object3D();
+      this.groupTiles3 = new THREE.Object3D();
+      this.groupTiles4 = new THREE.Object3D();
+
       this.tiles = [];
 
+      this.addGroupTiles(this.groupTiles);
+      this.addGroupTiles(this.groupTiles2);
+      this.addGroupTiles(this.groupTiles3);
+      this.addGroupTiles(this.groupTiles4);
+
+      this.groupTiles.position.set(-9, 0, 9);
+      this.groupTiles2.position.set(-27, 0, -9);
+      this.groupTiles3.position.set(9, 0, -9);
+      this.groupTiles4.position.set(-9, 0, -27);
+
+      this.addGrid();
+
+      this.animate();
+    }
+  }, {
+    key: 'addGroupTiles',
+    value: function addGroupTiles(group) {
+      var positions = [];
       var prevPos = 0;
 
-      var hasPrev = this.rowTiles.length && this.rowTiles[this.rowTiles.length - 1][0].position;
-
-      if (this.rowTiles.length) {
-        prevPos = this.rowTiles[this.rowTiles.length - 1][0].position.x + gutter;
-      }
+      var gutter = 2;
       var cols = 10;
       var rows = 10;
+
       for (var col = 0; col < cols; col++) {
         positions[col] = [];
-        this.rowTiles.push([]);
 
         for (var row = 0; row < rows; row++) {
           var pos = {
             z: row,
             y: 0,
-            x: hasPrev ? prevPos : col
+            x: col
           };
 
           positions[col][row] = pos;
-          var plane = this.createSphere(this.objectsColor);
+
+          var plane = this.create3DObj(this.objectsColor);
 
           plane.scale.set(1, 0.001, 1);
 
@@ -9149,21 +9200,15 @@ var App = function () {
 
           plane.position.set(pos.x, pos.y, pos.z);
 
-          this.groupTiles.add(plane);
+          group.add(plane);
 
           this.tiles.push(plane);
-
-          this.rowTiles[this.rowTiles.length - 1].push(plane);
-
-          index++;
         }
-
-        index++;
       }
 
-      this.groupTiles.position.set(-(cols - 1), 0, -(rows - 1));
+      positions = null;
 
-      this.addGrid();
+      this.scene.add(group);
     }
   }, {
     key: 'addGrid',
@@ -9190,11 +9235,15 @@ var App = function () {
   }, {
     key: 'drawWave',
     value: function drawWave() {
+      var scale = 0;
+      var freq = 0;
+
       if (this.playing) {
         this.analyser.getByteFrequencyData(this.frequencyData);
-        for (var i = 0; i < this.frequencyData.length; i++) {
-          var freq = this.frequencyData[i];
-          var scale = this.map(freq, 0, 255, 0.001, 1);
+
+        for (var i = 0; i < this.tiles.length; i++) {
+          freq = this.frequencyData[i];
+          scale = this.map(freq, 0, 255, 0.001, 1);
 
           if (this.tiles[i]) {
             _gsap.TweenMax.to(this.tiles[i].scale, .3, {
@@ -9243,6 +9292,8 @@ var App = function () {
       this.renderer = new THREE.WebGLRenderer({ antialias: true });
       this.renderer.setSize(window.innerWidth, window.innerHeight);
 
+      this.scene1 = new THREE.Scene();
+
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -9285,6 +9336,8 @@ var App = function () {
       this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
       this.camera.position.set(20, 20, -20);
       this.scene.add(this.camera);
+
+      this.cameraCube = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100000);
     }
   }, {
     key: 'addCameraControls',
@@ -9292,8 +9345,8 @@ var App = function () {
       this.controls = new _OrbitControls2.default(this.camera);
     }
   }, {
-    key: 'createSphere',
-    value: function createSphere(color) {
+    key: 'create3DObj',
+    value: function create3DObj(color) {
       var geometry = new THREE.CylinderGeometry(.4, .4, 10, 59);
       var material = new THREE.MeshStandardMaterial({
         color: color,
@@ -9359,6 +9412,8 @@ var App = function () {
 
       this.drawWave();
 
+      this.reflectingObject.rotation.y += .05;
+
       requestAnimationFrame(this.animate.bind(this));
     }
   }, {
@@ -9407,7 +9462,7 @@ window.app = new App();
 
 window.addEventListener('resize', app.onResize.bind(app));
 
-},{"./loader":4,"gsap":1,"threejs-controls/OrbitControls":2}],4:[function(require,module,exports){
+},{"./loader":4,"./reflector":5,"gsap":1,"threejs-controls/OrbitControls":2}],4:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -9459,5 +9514,225 @@ var Loader = function () {
 }();
 
 exports.default = Loader;
+
+},{}],5:[function(require,module,exports){
+'use strict';
+
+/**
+ * @author Slayvin / http://slayvin.net
+ */
+
+THREE.Reflector = function (geometry, options) {
+
+    THREE.Mesh.call(this, geometry);
+
+    this.type = 'Reflector';
+
+    var scope = this;
+
+    options = options || {};
+
+    var color = options.color !== undefined ? new THREE.Color(options.color) : new THREE.Color(0x7F7F7F);
+    var textureWidth = options.textureWidth || 512;
+    var textureHeight = options.textureHeight || 512;
+    var clipBias = options.clipBias || 0;
+    var shader = options.shader || THREE.Reflector.ReflectorShader;
+    var recursion = options.recursion !== undefined ? options.recursion : 0;
+
+    //
+
+    var reflectorPlane = new THREE.Plane();
+    var normal = new THREE.Vector3();
+    var reflectorWorldPosition = new THREE.Vector3();
+    var cameraWorldPosition = new THREE.Vector3();
+    var rotationMatrix = new THREE.Matrix4();
+    var lookAtPosition = new THREE.Vector3(0, 0, -1);
+    var clipPlane = new THREE.Vector4();
+    var viewport = new THREE.Vector4();
+
+    var view = new THREE.Vector3();
+    var target = new THREE.Vector3();
+    var q = new THREE.Vector4();
+
+    var textureMatrix = new THREE.Matrix4();
+    var virtualCamera = new THREE.PerspectiveCamera();
+
+    var parameters = {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        format: THREE.RGBFormat,
+        stencilBuffer: false
+    };
+
+    var renderTarget = new THREE.WebGLRenderTarget(textureWidth, textureHeight, parameters);
+
+    if (!THREE.Math.isPowerOfTwo(textureWidth) || !THREE.Math.isPowerOfTwo(textureHeight)) {
+
+        renderTarget.texture.generateMipmaps = false;
+    }
+
+    var material = new THREE.ShaderMaterial({
+        uniforms: THREE.UniformsUtils.clone(shader.uniforms),
+        fragmentShader: shader.fragmentShader,
+        vertexShader: shader.vertexShader
+    });
+
+    material.uniforms.tDiffuse.value = renderTarget.texture;
+    material.uniforms.color.value = color;
+    material.uniforms.textureMatrix.value = textureMatrix;
+
+    this.material = material;
+
+    this.onBeforeRender = function (renderer, scene, camera) {
+
+        if ('recursion' in camera.userData) {
+
+            if (camera.userData.recursion === recursion) return;
+
+            camera.userData.recursion++;
+        }
+
+        reflectorWorldPosition.setFromMatrixPosition(scope.matrixWorld);
+        cameraWorldPosition.setFromMatrixPosition(camera.matrixWorld);
+
+        rotationMatrix.extractRotation(scope.matrixWorld);
+
+        normal.set(0, 0, 1);
+        normal.applyMatrix4(rotationMatrix);
+
+        view.subVectors(reflectorWorldPosition, cameraWorldPosition);
+
+        // Avoid rendering when reflector is facing away
+
+        if (view.dot(normal) > 0) return;
+
+        view.reflect(normal).negate();
+        view.add(reflectorWorldPosition);
+
+        rotationMatrix.extractRotation(camera.matrixWorld);
+
+        lookAtPosition.set(0, 0, -1);
+        lookAtPosition.applyMatrix4(rotationMatrix);
+        lookAtPosition.add(cameraWorldPosition);
+
+        target.subVectors(reflectorWorldPosition, lookAtPosition);
+        target.reflect(normal).negate();
+        target.add(reflectorWorldPosition);
+
+        virtualCamera.position.copy(view);
+        virtualCamera.up.set(0, 1, 0);
+        virtualCamera.up.applyMatrix4(rotationMatrix);
+        virtualCamera.up.reflect(normal);
+        virtualCamera.lookAt(target);
+
+        virtualCamera.far = camera.far; // Used in WebGLBackground
+
+        virtualCamera.updateMatrixWorld();
+        virtualCamera.projectionMatrix.copy(camera.projectionMatrix);
+
+        virtualCamera.userData.recursion = 0;
+
+        // Update the texture matrix
+        textureMatrix.set(0.5, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0);
+        textureMatrix.multiply(virtualCamera.projectionMatrix);
+        textureMatrix.multiply(virtualCamera.matrixWorldInverse);
+        textureMatrix.multiply(scope.matrixWorld);
+
+        // Now update projection matrix with new clip plane, implementing code from: http://www.terathon.com/code/oblique.html
+        // Paper explaining this technique: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
+        reflectorPlane.setFromNormalAndCoplanarPoint(normal, reflectorWorldPosition);
+        reflectorPlane.applyMatrix4(virtualCamera.matrixWorldInverse);
+
+        clipPlane.set(reflectorPlane.normal.x, reflectorPlane.normal.y, reflectorPlane.normal.z, reflectorPlane.constant);
+
+        var projectionMatrix = virtualCamera.projectionMatrix;
+
+        q.x = (Math.sign(clipPlane.x) + projectionMatrix.elements[8]) / projectionMatrix.elements[0];
+        q.y = (Math.sign(clipPlane.y) + projectionMatrix.elements[9]) / projectionMatrix.elements[5];
+        q.z = -1.0;
+        q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14];
+
+        // Calculate the scaled plane vector
+        clipPlane.multiplyScalar(2.0 / clipPlane.dot(q));
+
+        // Replacing the third row of the projection matrix
+        projectionMatrix.elements[2] = clipPlane.x;
+        projectionMatrix.elements[6] = clipPlane.y;
+        projectionMatrix.elements[10] = clipPlane.z + 1.0 - clipBias;
+        projectionMatrix.elements[14] = clipPlane.w;
+
+        // Render
+
+        scope.visible = false;
+
+        var currentRenderTarget = renderer.getRenderTarget();
+
+        var currentVrEnabled = renderer.vr.enabled;
+        var currentShadowAutoUpdate = renderer.shadowMap.autoUpdate;
+
+        renderer.vr.enabled = false; // Avoid camera modification and recursion
+        renderer.shadowMap.autoUpdate = false; // Avoid re-computing shadows
+
+        renderer.render(scene, virtualCamera, renderTarget, true);
+
+        renderer.vr.enabled = currentVrEnabled;
+        renderer.shadowMap.autoUpdate = currentShadowAutoUpdate;
+
+        renderer.setRenderTarget(currentRenderTarget);
+
+        // Restore viewport
+
+        var bounds = camera.bounds;
+
+        if (bounds !== undefined) {
+
+            var size = renderer.getSize();
+            var pixelRatio = renderer.getPixelRatio();
+
+            viewport.x = bounds.x * size.width * pixelRatio;
+            viewport.y = bounds.y * size.height * pixelRatio;
+            viewport.z = bounds.z * size.width * pixelRatio;
+            viewport.w = bounds.w * size.height * pixelRatio;
+
+            renderer.state.viewport(viewport);
+        }
+
+        scope.visible = true;
+    };
+
+    this.getRenderTarget = function () {
+
+        return renderTarget;
+    };
+};
+
+THREE.Reflector.prototype = Object.create(THREE.Mesh.prototype);
+THREE.Reflector.prototype.constructor = THREE.Reflector;
+
+THREE.Reflector.ReflectorShader = {
+
+    uniforms: {
+
+        'color': {
+            type: 'c',
+            value: null
+        },
+
+        'tDiffuse': {
+            type: 't',
+            value: null
+        },
+
+        'textureMatrix': {
+            type: 'm4',
+            value: null
+        }
+
+    },
+
+    vertexShader: ['uniform mat4 textureMatrix;', 'varying vec4 vUv;', 'void main() {', '	vUv = textureMatrix * vec4( position, 1.0 );', '	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );', '}'].join('\n'),
+
+    fragmentShader: ['uniform vec3 color;', 'uniform sampler2D tDiffuse;', 'varying vec4 vUv;', 'float blendOverlay( float base, float blend ) {', '	return( base < 0.5 ? ( 2.0 * base * blend ) : ( 1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) );', '}', 'vec3 blendOverlay( vec3 base, vec3 blend ) {', '	return vec3( blendOverlay( base.r, blend.r ), blendOverlay( base.g, blend.g ), blendOverlay( base.b, blend.b ) );', '}', 'void main() {', '	vec4 base = texture2DProj( tDiffuse, vUv );', '	gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );', '}'].join('\n')
+};
 
 },{}]},{},[3]);

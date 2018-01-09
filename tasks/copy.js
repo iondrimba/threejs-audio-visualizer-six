@@ -10,6 +10,9 @@ module.exports = function () {
   gulp.src(['./src/*.mp3'])
     .pipe(gulp.dest('./public/'));
 
+    gulp.src(['./src/img/*.jpg'])
+    .pipe(gulp.dest('./public/img/'));
+
   return gulp.src(['./src/templates/index.html'])
     .pipe(gulp.dest('./public'));
 };

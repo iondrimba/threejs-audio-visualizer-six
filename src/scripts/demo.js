@@ -1,10 +1,11 @@
 import Loader from './loader';
 import OrbitControls from 'threejs-controls/OrbitControls';
+import Reflector from './reflector';
 import { TweenMax, Power2 } from 'gsap';
 
 class App {
   constructor() {
-    this.songFile = 'saved_by_the_bell.mp3';
+    this.songFile = 'ocean_drive.mp3';
     this.percent = 0;
     this.playing = false;
     this.volume = 1;
@@ -46,41 +47,94 @@ class App {
     this.addSpotLight(new THREE.SpotLight(this.objectsColor), 0, 30, 0);
     this.addCameraControls();
     this.addFloor();
-    this.animate();
+
     this.playSound(file);
     this.addEventListener();
 
-    this.groupTiles = new THREE.Object3D();
-    this.scene.add(this.groupTiles);
-    var gutter = 2;
+    var urls = [
+      './img/posx.jpg',
+      './img/negx.jpg',
+      './img/posy.jpg',
+      './img/negy.jpg',
+      './img/posz.jpg',
+      './img/negz.jpg'
+    ];
 
-    var positions = [];
-    var index = 0;
-    this.rowTiles = [];
+    var cubemap = new THREE.CubeTextureLoader().load(urls);
+    cubemap.format = THREE.RGBAFormat;
+
+    var shader = THREE.ShaderLib['cube'];
+    shader.uniforms['tCube'].texture = cubemap;
+
+    var material = new THREE.ShaderMaterial({
+      fragmentShader: shader.fragmentShader,
+      vertexShader: shader.vertexShader,
+      uniforms: shader.uniforms,
+      depthWrite: false
+    });
+
+    var skybox = new THREE.Mesh(new THREE.CubeGeometry(100, 100, 100), material);
+    skybox.flipSided = true;
+
+    var geometry1 = new THREE.OctahedronGeometry(3, 0);
+    var sphereMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffff00, emissive: 0x0,
+      roughness: 0.4,
+      metalness: 0.6,
+      envMap: cubemap
+    });
+    sphereMaterial.shadowMap = true;
+    sphereMaterial.castShadow = true;
+    this.reflectingObject = new THREE.Mesh(geometry1, sphereMaterial);
+    this.reflectingObject.position.y = 8;
+    this.reflectingObject.castShadow = true;
+    this.reflectingObject.receiveShadow = true;
+
+    this.scene.add(this.reflectingObject);
+
+    this.groupTiles = new THREE.Object3D();
+    this.groupTiles2 = new THREE.Object3D();
+    this.groupTiles3 = new THREE.Object3D();
+    this.groupTiles4 = new THREE.Object3D();
+
     this.tiles = [];
 
+    this.addGroupTiles(this.groupTiles);
+    this.addGroupTiles(this.groupTiles2);
+    this.addGroupTiles(this.groupTiles3);
+    this.addGroupTiles(this.groupTiles4);
+
+    this.groupTiles.position.set(-9, 0, 9);
+    this.groupTiles2.position.set(-27, 0, -9);
+    this.groupTiles3.position.set(9, 0, -9);
+    this.groupTiles4.position.set(-9, 0, -27);
+
+    this.addGrid();
+
+    this.animate();
+  }
+
+  addGroupTiles(group) {
+    let positions = [];
     let prevPos = 0;
 
-    const hasPrev = this.rowTiles.length && this.rowTiles[this.rowTiles.length - 1][0].position;
-
-    if (this.rowTiles.length) {
-      prevPos = this.rowTiles[this.rowTiles.length - 1][0].position.x + gutter;
-    }
+    const gutter = 2;
     const cols = 10;
     const rows = 10;
+
     for (let col = 0; col < cols; col++) {
       positions[col] = [];
-      this.rowTiles.push([]);
 
       for (let row = 0; row < rows; row++) {
         const pos = {
           z: row,
           y: 0,
-          x: hasPrev ? prevPos : col
-        }
+          x: col
+        };
 
         positions[col][row] = pos;
-        const plane = this.createSphere(this.objectsColor);
+
+        const plane = this.create3DObj(this.objectsColor);
 
         plane.scale.set(1, 0.001, 1);
 
@@ -94,21 +148,15 @@ class App {
 
         plane.position.set(pos.x, pos.y, pos.z);
 
-        this.groupTiles.add(plane);
+        group.add(plane);
 
         this.tiles.push(plane);
-
-        this.rowTiles[this.rowTiles.length - 1].push(plane);
-
-        index++;
       }
-
-      index++;
     }
 
-    this.groupTiles.position.set(-(cols-1), 0, -(rows-1));
+    positions = null;
 
-    this.addGrid();
+    this.scene.add(group);
   }
 
   addGrid() {
@@ -131,17 +179,22 @@ class App {
   }
 
   drawWave() {
+    let scale = 0;
+    let freq = 0;
+
     if (this.playing) {
       this.analyser.getByteFrequencyData(this.frequencyData);
-      for (var i = 0; i < this.frequencyData.length; i++) {
-        const freq = this.frequencyData[i];
-        let scale = this.map(freq, 0, 255, 0.001, 1);
+
+      for (let i = 0; i < this.tiles.length; i++) {
+        freq = this.frequencyData[i];
+        scale = this.map(freq, 0, 255, 0.001, 1);
 
         if (this.tiles[i]) {
           TweenMax.to(this.tiles[i].scale, .3, {
             y: scale
           });
         }
+
       }
     }
   }
@@ -177,6 +230,8 @@ class App {
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+    this.scene1 = new THREE.Scene();
 
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -216,6 +271,8 @@ class App {
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
     this.camera.position.set(20, 20, -20);
     this.scene.add(this.camera);
+
+    this.cameraCube = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100000);
   }
 
   addCameraControls() {
@@ -223,7 +280,7 @@ class App {
   }
 
 
-  createSphere(color) {
+  create3DObj(color) {
     const geometry = new THREE.CylinderGeometry(.4, .4, 10, 59);
     const material = new THREE.MeshStandardMaterial({
       color: color,
@@ -283,6 +340,8 @@ class App {
     this.renderer.render(this.scene, this.camera);
 
     this.drawWave();
+
+    this.reflectingObject.rotation.y += .05;
 
     requestAnimationFrame(this.animate.bind(this));
   }
