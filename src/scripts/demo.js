@@ -171,7 +171,6 @@ class App {
 
   playSound(file) {
     this.audioElement.src = file;
-    this.audioElement.load();
   }
 
   map(value, start1, stop1, start2, stop2) {
