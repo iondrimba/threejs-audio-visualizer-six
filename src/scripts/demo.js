@@ -32,7 +32,7 @@ class App {
           this.loaderBar.classList.add('removeLoader');
           this.loaderBar.style.transform = 'scale(1, 0)';
         })
-      }, 300);
+      }, 800);
     }
   }
 
