@@ -9096,6 +9096,12 @@ var App = function () {
     key: 'complete',
     value: function complete(file) {
       this.firstRing = new THREE.Object3D();
+      this.groupTiles = new THREE.Object3D();
+      this.groupTiles2 = new THREE.Object3D();
+      this.groupTiles3 = new THREE.Object3D();
+      this.groupTiles4 = new THREE.Object3D();
+
+      this.tiles = [];
 
       this.setupAudio();
       this.addSoundControls();
@@ -9109,6 +9115,25 @@ var App = function () {
       this.playSound(file);
       this.addEventListener();
 
+      this.addEnvMap();
+
+      this.addGroupTiles(this.groupTiles);
+      this.addGroupTiles(this.groupTiles2);
+      this.addGroupTiles(this.groupTiles3);
+      this.addGroupTiles(this.groupTiles4);
+
+      this.groupTiles.position.set(-9, 0, 9);
+      this.groupTiles2.position.set(-27, 0, -9);
+      this.groupTiles3.position.set(9, 0, -9);
+      this.groupTiles4.position.set(-9, 0, -27);
+
+      this.addGrid();
+
+      this.animate();
+    }
+  }, {
+    key: 'addEnvMap',
+    value: function addEnvMap() {
       var urls = ['./img/posx.jpg', './img/negx.jpg', './img/posy.jpg', './img/negy.jpg', './img/posz.jpg', './img/negz.jpg'];
 
       var cubemap = new THREE.CubeTextureLoader().load(urls);
@@ -9127,49 +9152,25 @@ var App = function () {
       var skybox = new THREE.Mesh(new THREE.CubeGeometry(100, 100, 100), material);
       skybox.flipSided = true;
 
-      var geometry1 = new THREE.OctahedronGeometry(3, 0);
+      var geometry = new THREE.OctahedronGeometry(3, 0);
       var sphereMaterial = new THREE.MeshStandardMaterial({
         color: 0xffff00, emissive: 0x0,
         roughness: 0.4,
         metalness: 0.6,
         envMap: cubemap
       });
-      sphereMaterial.shadowMap = true;
-      sphereMaterial.castShadow = true;
-      this.reflectingObject = new THREE.Mesh(geometry1, sphereMaterial);
+
+      this.reflectingObject = new THREE.Mesh(geometry, sphereMaterial);
       this.reflectingObject.position.y = 8;
       this.reflectingObject.castShadow = true;
       this.reflectingObject.receiveShadow = true;
 
       this.scene.add(this.reflectingObject);
-
-      this.groupTiles = new THREE.Object3D();
-      this.groupTiles2 = new THREE.Object3D();
-      this.groupTiles3 = new THREE.Object3D();
-      this.groupTiles4 = new THREE.Object3D();
-
-      this.tiles = [];
-
-      this.addGroupTiles(this.groupTiles);
-      this.addGroupTiles(this.groupTiles2);
-      this.addGroupTiles(this.groupTiles3);
-      this.addGroupTiles(this.groupTiles4);
-
-      this.groupTiles.position.set(-9, 0, 9);
-      this.groupTiles2.position.set(-27, 0, -9);
-      this.groupTiles3.position.set(9, 0, -9);
-      this.groupTiles4.position.set(-9, 0, -27);
-
-      this.addGrid();
-
-      this.animate();
     }
   }, {
     key: 'addGroupTiles',
     value: function addGroupTiles(group) {
       var positions = [];
-      var prevPos = 0;
-
       var gutter = 2;
       var cols = 10;
       var rows = 10;
@@ -9334,7 +9335,7 @@ var App = function () {
     key: 'createCamera',
     value: function createCamera() {
       this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
-      this.camera.position.set(20, 20, -20);
+      this.camera.position.set(40, 40, -40);
       this.scene.add(this.camera);
 
       this.cameraCube = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100000);
@@ -9430,8 +9431,7 @@ var App = function () {
       this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
       this.analyser = this.audioCtx.createAnalyser();
-      //this.analyser.fftSize = 2048;
-      this.analyser.smoothingTimeConstant = 0.3;
+      this.analyser.smoothingTimeConstant = 0.4;
 
       this.source = this.audioCtx.createMediaElementSource(this.audioElement);
       this.source.connect(this.analyser);
@@ -9451,6 +9451,7 @@ var App = function () {
       });
       this.audioElement.addEventListener('ended', function () {
         _this5.playing = false;
+        _this5.pause();
       });
     }
   }]);

@@ -38,6 +38,12 @@ class App {
 
   complete(file) {
     this.firstRing = new THREE.Object3D();
+    this.groupTiles = new THREE.Object3D();
+    this.groupTiles2 = new THREE.Object3D();
+    this.groupTiles3 = new THREE.Object3D();
+    this.groupTiles4 = new THREE.Object3D();
+
+    this.tiles = [];
 
     this.setupAudio();
     this.addSoundControls();
@@ -51,53 +57,7 @@ class App {
     this.playSound(file);
     this.addEventListener();
 
-    var urls = [
-      './img/posx.jpg',
-      './img/negx.jpg',
-      './img/posy.jpg',
-      './img/negy.jpg',
-      './img/posz.jpg',
-      './img/negz.jpg'
-    ];
-
-    var cubemap = new THREE.CubeTextureLoader().load(urls);
-    cubemap.format = THREE.RGBAFormat;
-
-    var shader = THREE.ShaderLib['cube'];
-    shader.uniforms['tCube'].texture = cubemap;
-
-    var material = new THREE.ShaderMaterial({
-      fragmentShader: shader.fragmentShader,
-      vertexShader: shader.vertexShader,
-      uniforms: shader.uniforms,
-      depthWrite: false
-    });
-
-    var skybox = new THREE.Mesh(new THREE.CubeGeometry(100, 100, 100), material);
-    skybox.flipSided = true;
-
-    var geometry1 = new THREE.OctahedronGeometry(3, 0);
-    var sphereMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffff00, emissive: 0x0,
-      roughness: 0.4,
-      metalness: 0.6,
-      envMap: cubemap
-    });
-    sphereMaterial.shadowMap = true;
-    sphereMaterial.castShadow = true;
-    this.reflectingObject = new THREE.Mesh(geometry1, sphereMaterial);
-    this.reflectingObject.position.y = 8;
-    this.reflectingObject.castShadow = true;
-    this.reflectingObject.receiveShadow = true;
-
-    this.scene.add(this.reflectingObject);
-
-    this.groupTiles = new THREE.Object3D();
-    this.groupTiles2 = new THREE.Object3D();
-    this.groupTiles3 = new THREE.Object3D();
-    this.groupTiles4 = new THREE.Object3D();
-
-    this.tiles = [];
+    this.addEnvMap();
 
     this.addGroupTiles(this.groupTiles);
     this.addGroupTiles(this.groupTiles2);
@@ -114,10 +74,50 @@ class App {
     this.animate();
   }
 
+  addEnvMap() {
+    const urls = [
+      './img/posx.jpg',
+      './img/negx.jpg',
+      './img/posy.jpg',
+      './img/negy.jpg',
+      './img/posz.jpg',
+      './img/negz.jpg'
+    ];
+
+    const cubemap = new THREE.CubeTextureLoader().load(urls);
+    cubemap.format = THREE.RGBAFormat;
+
+    const shader = THREE.ShaderLib['cube'];
+    shader.uniforms['tCube'].texture = cubemap;
+
+    const material = new THREE.ShaderMaterial({
+      fragmentShader: shader.fragmentShader,
+      vertexShader: shader.vertexShader,
+      uniforms: shader.uniforms,
+      depthWrite: false
+    });
+
+    const skybox = new THREE.Mesh(new THREE.CubeGeometry(100, 100, 100), material);
+    skybox.flipSided = true;
+
+    const geometry = new THREE.OctahedronGeometry(3, 0);
+    const sphereMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffff00, emissive: 0x0,
+      roughness: 0.4,
+      metalness: 0.6,
+      envMap: cubemap
+    });
+
+    this.reflectingObject = new THREE.Mesh(geometry, sphereMaterial);
+    this.reflectingObject.position.y = 8;
+    this.reflectingObject.castShadow = true;
+    this.reflectingObject.receiveShadow = true;
+
+    this.scene.add(this.reflectingObject);
+  }
+
   addGroupTiles(group) {
     let positions = [];
-    let prevPos = 0;
-
     const gutter = 2;
     const cols = 10;
     const rows = 10;
@@ -269,7 +269,7 @@ class App {
 
   createCamera() {
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
-    this.camera.position.set(20, 20, -20);
+    this.camera.position.set(40, 40, -40);
     this.scene.add(this.camera);
 
     this.cameraCube = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100000);
@@ -278,7 +278,6 @@ class App {
   addCameraControls() {
     this.controls = new OrbitControls(this.camera);
   }
-
 
   create3DObj(color) {
     const geometry = new THREE.CylinderGeometry(.4, .4, 10, 59);
@@ -355,8 +354,7 @@ class App {
     this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     this.analyser = this.audioCtx.createAnalyser();
-    //this.analyser.fftSize = 2048;
-    this.analyser.smoothingTimeConstant = 0.3;
+    this.analyser.smoothingTimeConstant = 0.4;
 
     this.source = this.audioCtx.createMediaElementSource(this.audioElement);
     this.source.connect(this.analyser);
@@ -376,6 +374,7 @@ class App {
     });
     this.audioElement.addEventListener('ended', () => {
       this.playing = false;
+      this.pause();
     });
   }
 }
