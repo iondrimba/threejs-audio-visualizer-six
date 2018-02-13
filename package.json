@@ -41,6 +41,7 @@
     "watchify": "^3.7.0"
   },
   "dependencies": {
+    "popmotion": "^8.1.10",
     "threejs-controls": "^1.0.6"
   }
 }

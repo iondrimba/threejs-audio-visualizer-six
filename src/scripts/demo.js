@@ -2,17 +2,21 @@ import Loader from './loader';
 import OrbitControls from 'threejs-controls/OrbitControls';
 import Reflector from './reflector';
 import { TweenMax, Power2 } from 'gsap';
+import { easing, physics, spring, tween, styler, listen, value, transform } from 'popmotion';
 
 class App {
   constructor() {
-    this.songFile = 'ocean_drive.mp3';
+    this.songFile = 'ready_player_one.mp3';
     this.percent = 0;
     this.playing = false;
     this.volume = 1;
-    this.sceneBackGroundColor = 0x1878de;
-    this.objectsColor = 0xfff700;
-    this.rowTiles = [];
-    this.groupTiles = new THREE.Object3D();
+    this.sceneBackGroundColor = 0x0;
+    this.objectsColor = 0x0;
+
+    this.groupSpheres = new THREE.Object3D();
+    this.groupCones = new THREE.Object3D();
+
+    this.tiles = [];
 
     this.loader = new Loader();
     this.loader.progress((percent) => { this.progress(percent); });
@@ -37,126 +41,140 @@ class App {
   }
 
   complete(file) {
-    this.firstRing = new THREE.Object3D();
-    this.groupTiles = new THREE.Object3D();
-    this.groupTiles2 = new THREE.Object3D();
-    this.groupTiles3 = new THREE.Object3D();
-    this.groupTiles4 = new THREE.Object3D();
-
-    this.tiles = [];
-
     this.setupAudio();
     this.addSoundControls();
     this.createScene();
     this.createCamera();
     this.addAmbientLight();
-    this.addSpotLight(new THREE.SpotLight(this.objectsColor), 0, 30, 0);
+    this.addSpotLight(new THREE.SpotLight(0xffffff), 0, 200, 0);
     this.addCameraControls();
     this.addFloor();
 
     this.playSound(file);
     this.addEventListener();
 
-    this.addEnvMap();
-
-    this.addGroupTiles(this.groupTiles);
-    this.addGroupTiles(this.groupTiles2);
-    this.addGroupTiles(this.groupTiles3);
-    this.addGroupTiles(this.groupTiles4);
-
-    this.groupTiles.position.set(-9, 0, 9);
-    this.groupTiles2.position.set(-27, 0, -9);
-    this.groupTiles3.position.set(9, 0, -9);
-    this.groupTiles4.position.set(-9, 0, -27);
-
     this.addGrid();
+
+    this.shape = this.createShape();
+    this.createGround(this.shape);
 
     this.animate();
   }
 
-  addEnvMap() {
-    const urls = [
-      './img/posx.jpg',
-      './img/negx.jpg',
-      './img/posy.jpg',
-      './img/negy.jpg',
-      './img/posz.jpg',
-      './img/negz.jpg'
+
+  createShape() {
+    const size = 200;
+    const vectors = [
+      new THREE.Vector2(-size, size),
+      new THREE.Vector2(-size, -size),
+      new THREE.Vector2(size, -size),
+      new THREE.Vector2(size, size)
     ];
+    const shape = new THREE.Shape(vectors);
+    shape.autoClose = true;
 
-    const cubemap = new THREE.CubeTextureLoader().load(urls);
-    cubemap.format = THREE.RGBAFormat;
+    this.createHoles(shape, size);
 
-    const shader = THREE.ShaderLib['cube'];
-    shader.uniforms['tCube'].texture = cubemap;
-
-    const material = new THREE.ShaderMaterial({
-      fragmentShader: shader.fragmentShader,
-      vertexShader: shader.vertexShader,
-      uniforms: shader.uniforms,
-      depthWrite: false
-    });
-
-    const skybox = new THREE.Mesh(new THREE.CubeGeometry(100, 100, 100), material);
-    skybox.flipSided = true;
-
-    const geometry = new THREE.OctahedronGeometry(3, 0);
-    const sphereMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffff00, emissive: 0x0,
-      roughness: 0.4,
-      metalness: 0.6,
-      envMap: cubemap
-    });
-
-    this.reflectingObject = new THREE.Mesh(geometry, sphereMaterial);
-    this.reflectingObject.position.y = 8;
-    this.reflectingObject.castShadow = true;
-    this.reflectingObject.receiveShadow = true;
-
-    this.scene.add(this.reflectingObject);
+    return shape;
   }
 
-  addGroupTiles(group) {
-    let positions = [];
-    const gutter = 2;
+  createHoles(shape, size) {
+    const total = 3;
+    const radius = .5;
+    const positions = [0, 1, 2];
+
     const cols = 10;
-    const rows = 10;
+    const rows = cols / 2;
+    const space = radius + .5;
+    const finalPos = (i, space) => {
+      return (-i * space);
+    }
 
-    for (let col = 0; col < cols; col++) {
-      positions[col] = [];
+    const sphereGap = 5;
 
-      for (let row = 0; row < rows; row++) {
-        const pos = {
-          z: row,
-          y: 0,
-          x: col
-        };
+    for (let i = -4; i < 5; i++) {
+      for (let j = -5; j < 0; j++) {
+        const holePath = new THREE.Path();
+        const x = finalPos(i, space);
+        const y = finalPos(j, space);
 
-        positions[col][row] = pos;
+        holePath.moveTo(x, y);
+        holePath.ellipse(x, y, radius, radius, 0, Math.PI * 2);
+        holePath.autoClose = true;
+        shape.holes.push(holePath);
 
-        const plane = this.create3DObj(this.objectsColor);
+        const sphere = this.createSphere(this.objectsColor);
 
-        plane.scale.set(1, 0.001, 1);
+        sphere.position.set(x - (i * 1), 0, y - (j * 1));
 
-        if (col > 0) {
-          pos.x = (positions[col - 1][row].x * 1) + gutter;
-        }
+        this.groupSpheres.add(sphere);
 
-        if (row > 0) {
-          pos.z = (positions[col][row - 1].z * 1) + gutter;
-        }
-
-        plane.position.set(pos.x, pos.y, pos.z);
-
-        group.add(plane);
-
-        this.tiles.push(plane);
+        this.tiles.push(sphere);
       }
     }
 
-    positions = null;
+    this.scene.add(this.groupSpheres);
 
-    this.scene.add(group);
+    for (let i = -4; i < 5; i++) {
+      for (let j = 1; j < 6; j++) {
+        const holePath = new THREE.Path();
+        const x = finalPos(i, space);
+        const y = finalPos(j, space);
+
+        holePath.moveTo(finalPos(i, space), finalPos(j, space));
+        holePath.ellipse(finalPos(i, space), finalPos(j, space), radius, radius, 0, Math.PI * 2);
+        holePath.autoClose = true;
+        shape.holes.push(holePath);
+
+        const cones = this.create3DObj(this.objectsColor);
+        cones.notSphere = true;
+
+        cones.position.set(x - (i * 1), -10, y - (j * 1));
+
+        this.groupCones.add(cones);
+
+        this.tiles.push(cones);
+      }
+    }
+
+    this.scene.add(this.groupCones);
+  }
+
+  createGround(shape) {
+    var materials = [
+      // top
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 1,
+        metalness: 0.1,
+        flatShading: THREE.FlatShading
+      }),
+      // inside
+      new THREE.MeshStandardMaterial({
+        color: 0xf9f9f9,
+        roughness: 0,
+        metalness: 0.6,
+        flatShading: THREE.FlatShading
+      })
+    ];
+
+    const props = {
+      steps: 1,
+      amount: 5,
+      bevelEnabled: false
+    }
+
+    const geometry = new THREE.ExtrudeGeometry(
+      shape,
+      props
+    );
+
+    const bufferGeometry = new THREE.BufferGeometry().fromGeometry(geometry);
+
+    const mesh = new THREE.Mesh(geometry, materials);
+    mesh.receiveShadow = true;
+    mesh.rotation.set(Math.PI * 0.5, 0, 0);
+    this.scene.add(mesh);
   }
 
   addGrid() {
@@ -175,27 +193,6 @@ class App {
 
   map(value, start1, stop1, start2, stop2) {
     return (value - start1) / (stop1 - start1) * (stop2 - start2) + start2
-  }
-
-  drawWave() {
-    let scale = 0;
-    let freq = 0;
-
-    if (this.playing) {
-      this.analyser.getByteFrequencyData(this.frequencyData);
-
-      for (let i = 0; i < this.tiles.length; i++) {
-        freq = this.frequencyData[i];
-        scale = this.map(freq, 0, 255, 0.001, 1);
-
-        if (this.tiles[i]) {
-          TweenMax.to(this.tiles[i].scale, .3, {
-            y: scale
-          });
-        }
-
-      }
-    }
   }
 
   addSoundControls() {
@@ -268,24 +265,93 @@ class App {
 
   createCamera() {
     this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
-    this.camera.position.set(40, 40, -40);
+    this.camera.position.set(0, 40, 0);
     this.scene.add(this.camera);
-
-    this.cameraCube = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100000);
   }
 
   addCameraControls() {
     this.controls = new OrbitControls(this.camera);
   }
 
+  drawWave() {
+    let velocity = 0;
+    let freq = 0;
+    let scale = 0;
+
+    if (this.playing) {
+      this.analyser.getByteFrequencyData(this.frequencyData);
+
+      for (let i = 0; i < this.tiles.length; i++) {
+        freq = this.frequencyData[i];
+
+        if (this.tiles[i] && !this.tiles[i].notSphere && !this.tiles[i].falling) {
+
+          velocity = this.map(freq, 0, 255, -50, 80);
+          this.tiles[i].gravity
+            .set(Math.min(0, this.tiles[i].ballY.get()))
+            .setVelocity(-(velocity));
+
+          this.tiles[i].falling = true;
+        }
+
+        if(this.tiles[i] && this.tiles[i].notSphere) {
+          scale = this.map(freq, 0, 255, 0.001, 2);
+          TweenMax.to(this.tiles[i].scale, .3, {
+              y: scale
+          });
+        }
+      }
+    }
+  }
+
+  createSphere(color) {
+    const geometry = new THREE.SphereGeometry(.5, 16, 16);
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x8b05f5,
+      specular: 0x8c0df0,
+      emissive: 0x0,
+      flatShading: THREE.FlatShading,
+      side: THREE.DoubleSide
+    });
+
+
+    let sphere = new THREE.Mesh(geometry, material);
+    sphere.position.y = 0;
+    sphere.castShadow = true;
+    sphere.receiveShadow = true;
+
+    const ballY = value(10, (v) => {
+      sphere.position.y = -Math.min(10, v);
+    });
+    sphere.ballY = ballY;
+    sphere.falling = false;
+
+    const gravity = physics({
+      acceleration: 250,
+      restSpeed: false
+    }).start((v) => {
+      if (sphere.falling) {
+        if (v < 10) {
+          ballY.update(v);
+        } else {
+          sphere.falling = false;
+        }
+      }
+    });
+
+    sphere.gravity = gravity;
+
+    return sphere;
+  }
+
   create3DObj(color) {
     const geometry = new THREE.CylinderGeometry(.4, .4, 10, 59);
-    const material = new THREE.MeshStandardMaterial({
-      color: color,
-      emissive: 0x586300,
-      roughness: 0.15,
-      metalness: 0.64
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x12ff31,
+      flatShading: THREE.FlatShading,
+      side: THREE.DoubleSide
     });
+
     const obj = new THREE.Mesh(geometry, material);
     obj.castShadow = true;
     obj.receiveShadow = true;
@@ -328,7 +394,7 @@ class App {
   }
 
   addAmbientLight() {
-    const light = new THREE.AmbientLight(0xffffff);
+    const light = new THREE.AmbientLight(0xffffff, .5);
     this.scene.add(light);
   }
 
@@ -338,8 +404,6 @@ class App {
     this.renderer.render(this.scene, this.camera);
 
     this.drawWave();
-
-    this.reflectingObject.rotation.y += .05;
 
     requestAnimationFrame(this.animate.bind(this));
   }
