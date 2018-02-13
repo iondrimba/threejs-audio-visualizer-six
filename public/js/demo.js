@@ -11793,18 +11793,11 @@ var App = function () {
   }, {
     key: 'addSoundControls',
     value: function addSoundControls() {
-      var _this4 = this;
-
       this.btnPlay = document.querySelector('.play');
       this.btnPause = document.querySelector('.pause');
 
-      this.btnPlay.addEventListener('click', function () {
-        _this4.play();
-      });
-
-      this.btnPause.addEventListener('click', function () {
-        _this4.pause();
-      });
+      this.btnPlay.addEventListener('click', this.play.bind(this));
+      this.btnPause.addEventListener('click', this.pause.bind(this));
     }
   }, {
     key: 'pause',
@@ -11839,11 +11832,11 @@ var App = function () {
   }, {
     key: 'addEventListener',
     value: function addEventListener() {
-      var _this5 = this;
+      var _this4 = this;
 
       this.playIntro.addEventListener('click', function (evt) {
         evt.currentTarget.classList.remove('control-show');
-        _this5.play();
+        _this4.play();
       });
 
       document.body.addEventListener('mouseup', function () {
@@ -11862,8 +11855,8 @@ var App = function () {
 
       document.body.addEventListener('keyup', function (evt) {
         if (evt.keyCode === 32 || evt.code === 'Space') {
-          _this5.playIntro.classList.remove('control-show');
-          _this5.playing ? _this5.pause() : _this5.play();
+          _this4.playIntro.classList.remove('control-show');
+          _this4.playing ? _this4.pause() : _this4.play();
         }
       });
     }
@@ -11907,7 +11900,7 @@ var App = function () {
   }, {
     key: 'setupAudio',
     value: function setupAudio() {
-      var _this6 = this;
+      var _this5 = this;
 
       this.audioElement = document.getElementById('audio');
       this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -11926,14 +11919,14 @@ var App = function () {
       this.audioElement.volume = this.volume;
 
       this.audioElement.addEventListener('playing', function () {
-        _this6.playing = true;
+        _this5.playing = true;
       });
       this.audioElement.addEventListener('pause', function () {
-        _this6.playing = false;
+        _this5.playing = false;
       });
       this.audioElement.addEventListener('ended', function () {
-        _this6.playing = false;
-        _this6.pause();
+        _this5.playing = false;
+        _this5.pause();
       });
     }
   }]);

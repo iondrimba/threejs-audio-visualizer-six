@@ -1,4 +1,4 @@
-# Ocean Drive - ThreeJs Audio Visualizer #6
+# Ready Player One - ThreeJs Audio Visualizer #6
 
 Live Demo https://iondrimba.github.io/threejs-audio-visualizer-six/public/index.html
 

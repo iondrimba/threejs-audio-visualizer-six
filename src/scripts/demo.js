@@ -302,13 +302,8 @@ class App {
     this.btnPlay = document.querySelector('.play');
     this.btnPause = document.querySelector('.pause');
 
-    this.btnPlay.addEventListener('click', () => {
-      this.play();
-    });
-
-    this.btnPause.addEventListener('click', () => {
-      this.pause();
-    });
+    this.btnPlay.addEventListener('click', this.play.bind(this));
+    this.btnPause.addEventListener('click', this.pause.bind(this));
   }
 
   pause() {
