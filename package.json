@@ -32,7 +32,7 @@
     "gulp-sass": "^2.2.0",
     "gulp-streamify": "^1.0.2",
     "gulp-sync": "^0.1.4",
-    "gulp-uglify": "^1.5.3",
+    "gulp-uglify": "^3.0.0",
     "gulp-watch": "^4.3.5",
     "lodash": "^4.6.1",
     "phantomjs-prebuilt": "^2.1.5",
@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "popmotion": "^8.1.10",
+    "pump": "^3.0.0",
     "threejs-controls": "^1.0.6"
   }
 }

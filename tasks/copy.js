@@ -1,7 +1,7 @@
 const gulp = require('gulp');
 
 module.exports = function () {
-  gulp.src(['./src/scripts/*.js'])
+  gulp.src(['./src/scripts/three.min.js'])
     .pipe(gulp.dest('./public/js'));
 
   gulp.src(['./src/styles/*.css'])
