@@ -2,8 +2,8 @@ html, body {
   margin: 0;
   padding: 0;
   font-family: 'Ropa Sans', sans-serif;
-  background-color: #e5e5e5;
-  color: #ff1876;
+  background-color: #ff24a3;
+  color: #ffffff;
   box-sizing: border-box;
   overflow: hidden;
   cursor: -webkit-grab;
@@ -34,12 +34,15 @@ button {
   width: 100px;
   cursor: pointer; }
   .play-intro svg {
-    width: 100%; }
+    width: 100%;
+    fill: #ffffff; }
 
 .controls {
   position: absolute;
   right: 30px;
   top: 10px; }
+  .controls svg {
+    fill: #ffffff; }
 
 .play, .pause {
   display: none; }
