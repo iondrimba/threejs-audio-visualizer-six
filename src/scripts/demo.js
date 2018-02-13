@@ -1,8 +1,7 @@
 import Loader from './loader';
 import OrbitControls from 'threejs-controls/OrbitControls';
-import Reflector from './reflector';
 import { TweenMax, Power2 } from 'gsap';
-import { easing, physics, spring, tween, styler, listen, value, transform } from 'popmotion';
+import { easing, physics, tween, styler, listen, value, transform } from 'popmotion';
 
 class App {
   constructor() {
@@ -10,8 +9,7 @@ class App {
     this.percent = 0;
     this.playing = false;
     this.volume = 1;
-    this.sceneBackGroundColor = 0x0;
-    this.objectsColor = 0x0;
+    this.sceneBackGroundColor = 0x3d0940;
     this.spotLightColor = 0xffffff;
     this.ambientLightColor = 0xffffff;
 
@@ -140,31 +138,6 @@ class App {
       }
     }
 
-    //this.scene.add(this.groupSpheres);
-
-    // for (let i = -4; i < 5; i++) {
-    //   for (let j = 1; j < 6; j++) {
-    //     const holePath = new THREE.Path();
-    //     const x = finalPos(i);
-    //     const y = finalPos(j);
-
-    //     holePath.moveTo(finalPos(i), finalPos(j));
-    //     holePath.ellipse(finalPos(i), finalPos(j), radius, radius, 0, Math.PI * 2);
-    //     holePath.autoClose = true;
-    //     shape.holes.push(holePath);
-
-    //     const cones = this.createCone();
-    //     cones.hasPhysics = true;
-
-    //     cones.position.set(x - (i * 1), -10, y - (j * 1));
-
-    //     this.groupCones.add(cones);
-
-    //     this.tiles.push(cones);
-    //   }
-    // }
-
-    // this.scene.add(this.groupCones);
   }
 
   createGround(shape) {
@@ -211,6 +184,16 @@ class App {
 
       for (let i = 0; i < this.tiles.length; i++) {
         freq = this.frequencyData[i];
+
+        if (this.tiles[i] && this.tiles[i].hasPhysics && !this.tiles[i].falling) {
+
+          velocity = this.map(freq, 0, 255, -50, 80);
+          this.tiles[i].gravity
+            .set(Math.min(0, this.tiles[i].posY.get()))
+            .setVelocity(-(velocity));
+
+          this.tiles[i].falling = true;
+        }
 
         if (this.tiles[i] && !this.tiles[i].hasPhysics) {
           scale = this.map(freq, 0, 255, 0.001, 2);
