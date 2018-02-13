@@ -69,12 +69,11 @@ button {
   width: 100%;
   height: 100%;
   top: 0;
-  display: none;
   z-index: 0;
   transform: scale(0, 1);
   transform-origin: left;
   transition: transform .3s cubic-bezier(.23, 1, .32, 1);
-  background: linear-gradient(to right, #fd0354, #ff6a00);
+  background: linear-gradient(to right, #0346fd, #008cff);
 }
 
 a {
