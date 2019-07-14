@@ -180,7 +180,7 @@ export default class App {
 
     const props = {
       steps: 1,
-      amount: 4,
+      depth: 4,
       bevelEnabled: false
     }
 
