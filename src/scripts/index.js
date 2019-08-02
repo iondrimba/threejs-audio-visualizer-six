@@ -27,13 +27,14 @@ export default class App {
   }
 
   progress(percent) {
-    this.loaderBar.style.transform = `scale(${(percent / 100) + .1}, .999)`;
+    this.loaderBar.style.transform = `scale(${(percent / 100) + .1}, 1.1)`;
+
     if (percent === 100) {
       setTimeout(() => {
         requestAnimationFrame(() => {
           this.playIntro.classList.add('control-show');
           this.loaderBar.classList.add('removeLoader');
-          this.loaderBar.style.transform = 'scale(.999, 0)';
+          this.loaderBar.style.transform = 'scale(1, 0)';
         })
       }, 800);
     }
@@ -57,6 +58,14 @@ export default class App {
     this.createGround(this.floorShape);
 
     this.animate();
+
+    document.addEventListener('visibilitychange', (evt) => {
+      if (evt.target.hidden) {
+        this.pause();
+      } else {
+        this.play();
+      }
+    }, false);
   }
 
   createShape() {
@@ -68,18 +77,8 @@ export default class App {
       new THREE.Vector2(size, size)
     ];
     const shape = new THREE.Shape(vectors);
+
     shape.autoClose = true;
-
-    const geometrySphere = new THREE.SphereBufferGeometry(.5, 16, 16);
-    const materialSphere = new THREE.MeshPhongMaterial({
-      color: 0x3a88ff,
-      specular: 0xffffff,
-      shininess: 2,
-      emissive: 0x0b57b9,
-      side: THREE.DoubleSide
-    });
-
-
 
     this.createHoles(shape, {
       cols: {
@@ -90,8 +89,6 @@ export default class App {
         start: -5,
         end: 0
       },
-      geometry: geometrySphere,
-      material: materialSphere,
       elementCreate: this.createSphere,
       onAdd: (element, x, y, i, j) => {
         this.addPhysics(element);
@@ -104,14 +101,6 @@ export default class App {
       }
     });
 
-    const geometryCone = new THREE.CylinderGeometry(.4, .4, 10, 59);
-    const materialCone = new THREE.MeshPhongMaterial({
-      color: 0x12ff31,
-      flatShading: THREE.FlatShading,
-      side: THREE.DoubleSide
-    });
-
-
     this.createHoles(shape, {
       cols: {
         start: -4,
@@ -121,8 +110,6 @@ export default class App {
         start: 1,
         end: 6
       },
-      geometry: geometryCone,
-      material: materialCone,
       elementCreate: this.createCone,
       onAdd: (element, x, y, i, j) => {
         element.position.set(x - (i * 1), -10, y - (j * 1));
@@ -143,7 +130,7 @@ export default class App {
     const radius = .5;
     const finalPos = (i) => {
       return (-i * 1);
-    }
+    };
 
     for (let i = props.cols.start; i < props.cols.end; i++) {
       for (let j = props.rows.start; j < props.rows.end; j++) {
@@ -156,22 +143,19 @@ export default class App {
         holePath.autoClose = true;
         shape.holes.push(holePath);
 
-        props.onAdd(props.elementCreate(props.geometry, props.material), x, y, i, j);
+        props.onAdd(props.elementCreate(), x, y, i, j);
       }
     }
-
   }
 
   createGround(shape) {
-    var materials = [
-      // top
+    const materials = [
       new THREE.MeshStandardMaterial({
         color: 0xff1876,
         roughness: 1,
         metalness: 0.1,
         flatShading: THREE.FlatShading
       }),
-      // inside
       new THREE.MeshStandardMaterial({
         color: 0xf324ff,
         flatShading: THREE.FlatShading
@@ -182,15 +166,13 @@ export default class App {
       steps: 1,
       depth: 4,
       bevelEnabled: false
-    }
+    };
 
-    const geometry = new THREE.ExtrudeGeometry(
-      shape,
-      props
-    );
-
+    const geometry = new THREE.ExtrudeGeometry(shape, props);
     const mesh = new THREE.Mesh(geometry, materials);
+
     mesh.rotation.set(Math.PI * 0.5, 0, 0);
+
     this.scene.add(mesh);
   }
 
@@ -202,12 +184,12 @@ export default class App {
     if (this.playing) {
       this.analyser.getByteFrequencyData(this.frequencyData);
 
-      for (let i = 0; i < this.tiles.length; i++) {
+      for (let i = 0; i < this.frequencyData.length; i++) {
         freq = this.frequencyData[i];
 
         if (this.tiles[i] && this.tiles[i].hasPhysics && !this.tiles[i].falling) {
-
           velocity = this.map(freq, 0, 255, -50, 80);
+
           this.tiles[i].gravity
             .set(Math.min(0, this.tiles[i].posY.get()))
             .setVelocity(-(velocity));
@@ -217,16 +199,26 @@ export default class App {
 
         if (this.tiles[i] && !this.tiles[i].hasPhysics) {
           scale = this.map(freq, 0, 255, 0.001, 2);
-          TweenMax.to(this.tiles[i].scale, .4, {
-            y: scale
-          });
+
+          TweenMax.to(this.tiles[i].scale, .4, { y: scale });
         }
       }
     }
   }
 
-  createSphere(geometry, material) {
-    const sphere = new THREE.Mesh(geometry, material);
+  createSphere() {
+    const geometry = new THREE.SphereGeometry(.5, 16, 16);
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x3a88ff,
+      specular: 0xffffff,
+      shininess: 2,
+      emissive: 0x0b57b9,
+      side: THREE.DoubleSide
+    });
+
+
+    let sphere = new THREE.Mesh(geometry, material);
+
     sphere.position.y = 0;
     sphere.castShadow = true;
     sphere.receiveShadow = true;
@@ -258,15 +250,25 @@ export default class App {
     element.gravity = gravity;
   }
 
-  createCone(geometry, material) {
+  createCone() {
+    const geometry = new THREE.CylinderGeometry(.4, .4, 10, 59);
+    const material = new THREE.MeshPhongMaterial({
+      color: 0x12ff31,
+      flatShading: THREE.FlatShading,
+      side: THREE.DoubleSide
+    });
+
     const obj = new THREE.Mesh(geometry, material);
+
     obj.castShadow = true;
     obj.receiveShadow = true;
     obj.position.y = 5;
 
     const pivot = new THREE.Object3D();
+
     pivot.add(obj);
     pivot.size = 2;
+
     return pivot;
   }
 
@@ -280,6 +282,7 @@ export default class App {
 
   addAmbientLight(color) {
     const light = new THREE.AmbientLight(color, .5);
+
     this.scene.add(light);
   }
 
@@ -287,9 +290,11 @@ export default class App {
     const size = 25;
     const divisions = size;
     const gridHelper = new THREE.GridHelper(size, divisions);
+
     gridHelper.position.set(0, 0, 0);
     gridHelper.material.opacity = 0;
     gridHelper.material.transparent = true;
+
     this.scene.add(gridHelper);
   }
 
@@ -316,6 +321,7 @@ export default class App {
   }
 
   play() {
+    this.audioCtx.resume();
     this.audioElement.play();
     this.btnPlay.classList.remove('control-show');
     this.btnPause.classList.add('control-show');
@@ -391,6 +397,7 @@ export default class App {
   onResize() {
     const ww = window.innerWidth;
     const wh = window.innerHeight;
+
     this.camera.aspect = ww / wh;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(ww, wh);
@@ -416,9 +423,11 @@ export default class App {
     this.audioElement.addEventListener('playing', () => {
       this.playing = true;
     });
+
     this.audioElement.addEventListener('pause', () => {
       this.playing = false;
     });
+
     this.audioElement.addEventListener('ended', () => {
       this.playing = false;
       this.pause();
