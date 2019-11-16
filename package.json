@@ -27,7 +27,7 @@
     "mini-css-extract-plugin": "^0.8.0",
     "node-sass": "^4.13.0",
     "optimize-css-assets-webpack-plugin": "^5.0.3",
-    "popmotion": "^8.7.0",
+    "popmotion": "^8.7.1",
     "sass-loader": "^7.3.1",
     "style-loader": "^1.0.0",
     "uglifyjs-webpack-plugin": "^2.2.0",
