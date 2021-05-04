@@ -1,6 +1,9 @@
 import '../scss/index.scss';
 import Loader from './loader';
 import { physics, value } from 'popmotion';
+import * as TweenMax from './TweenMax.min';
+import * as THREE from 'three';
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 export default class App {
   constructor() {
@@ -377,7 +380,7 @@ export default class App {
   }
 
   addCameraControls() {
-    this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
   }
 
   animate() {
